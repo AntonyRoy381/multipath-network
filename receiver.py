@@ -13,13 +13,21 @@ while True:
     packet = json.loads(data.decode('utf-8'))
     seq = packet['sequence_number']
     
-    print(f"[Network Layer] Received sequence {seq} from router at {address}")
+    print(f"[Network] Received sequence {seq}")
     
-    # Store the out-of-order packet in the buffer dictionary
+    # 1. Immediately send an ACK back to the sender[cite: 4]
+    ack_packet = {
+        "type": "ACK",
+        "ack_sequence": seq
+    }
+    # Send directly to the sender's bound port (4000)
+    sock.sendto(json.dumps(ack_packet).encode('utf-8'), ('localhost', 4000))
+    print(f"[Network] Sent ACK for sequence {seq}")
+    
+    # 2. Process the packet for application delivery
     packet_buffer[seq] = packet
     
-    # Check if the buffer contains the next sequence number we need to deliver[cite: 4]
     while expected_sequence in packet_buffer:
         delivered_packet = packet_buffer.pop(expected_sequence)
-        print(f">>> [App Layer] Delivered: Sequence {expected_sequence} - '{delivered_packet['payload']}'")
+        print(f">>> [App] Delivered: Seq {expected_sequence} - '{delivered_packet['payload']}'\n")
         expected_sequence += 1
