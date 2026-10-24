@@ -1,22 +1,25 @@
 import socket
 import json
 
-# Set up a UDP socket (AF_INET = IPv4, SOCK_DGRAM = UDP)
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-# Bind the socket to your local machine on port 5000
 sock.bind(('localhost', 5000))
-print("Receiver is active and listening on port 5000...")
+print("Receiver listening on port 5000...")
 
-# Create an infinite loop to keep listening for incoming messages
+expected_sequence = 1
+packet_buffer = {}
+
 while True:
-    # Wait to receive up to 1024 bytes of data
     data, address = sock.recvfrom(1024)
-    
-    # Decode the raw bytes back into a Python dictionary (JSON)
     packet = json.loads(data.decode('utf-8'))
+    seq = packet['sequence_number']
     
-    print(f"\n--- New Packet from {address} ---")
-    print(f"Sequence: {packet['sequence_number']}")
-    print(f"Payload: {packet['payload']}")
-    print(f"Integrity Hash: {packet['checksum']}")
+    print(f"[Network Layer] Received sequence {seq} from router at {address}")
+    
+    # Store the out-of-order packet in the buffer dictionary
+    packet_buffer[seq] = packet
+    
+    # Check if the buffer contains the next sequence number we need to deliver[cite: 4]
+    while expected_sequence in packet_buffer:
+        delivered_packet = packet_buffer.pop(expected_sequence)
+        print(f">>> [App Layer] Delivered: Sequence {expected_sequence} - '{delivered_packet['payload']}'")
+        expected_sequence += 1
